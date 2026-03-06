@@ -11,6 +11,7 @@ import StockCard from "@/components/dashboard/StockCard";
 import PortfolioChart from "@/components/dashboard/PortfolioChart";
 import HoldingsTable from "@/components/dashboard/HoldingsTable";
 import WatchlistPanel from "@/components/dashboard/WatchlistPanel";
+import CandlestickChart from "@/components/dashboard/CandlestickChart";
 import { allStocks, topGainers, topLosers, trendingStocks } from "@/lib/mockData";
 
 const Dashboard = () => {
@@ -85,6 +86,9 @@ const Dashboard = () => {
           <h2 className="text-lg font-semibold mb-3">Market Overview</h2>
           <MarketOverview />
         </div>
+
+        {/* Candlestick Chart */}
+        <CandlestickChart />
 
         {/* Portfolio + Watchlist */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
