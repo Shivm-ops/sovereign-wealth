@@ -31,7 +31,7 @@ const Dashboard = () => {
 
     // Load real watchlist from MongoDB
     const userId = user._id || user.id;
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:5000" : "");
 
     fetch(`${API_URL}/api/watchlist?userId=${userId}`)
       .then(res => res.json())
@@ -46,7 +46,7 @@ const Dashboard = () => {
   const toggleWatchlist = async (symbol: string, name: string) => {
     if (!user) return;
     const userId = user._id || user.id;
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:5000" : "");
 
     if (watchlist.includes(symbol)) {
       // Remove from backend
