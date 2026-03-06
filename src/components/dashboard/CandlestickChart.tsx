@@ -126,7 +126,7 @@ const CandlestickChart: React.FC = () => {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h3 className="font-semibold text-foreground text-lg">Market Performance</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Real-time TradingView Analytics</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Real-time Market Analytics</p>
         </div>
         <div className="flex gap-1 p-1 bg-muted/30 rounded-lg">
           {stocks.map((s) => (
@@ -134,8 +134,8 @@ const CandlestickChart: React.FC = () => {
               key={s}
               onClick={() => setSelected(s)}
               className={`px-4 py-1.5 text-xs rounded-md font-medium transition-all duration-300 ${selected === s
-                  ? "bg-primary text-primary-foreground shadow-lg"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                ? "bg-primary text-primary-foreground shadow-lg"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 }`}
             >
               {s}
