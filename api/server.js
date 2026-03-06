@@ -1,12 +1,6 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-// Define Schemas directly in the server file for simplicity in Serverless environment, 
-// or import them if you prefer. For Vercel, compact is often better.
 
 const userSchema = new mongoose.Schema({
     name: { type: String, required: true },
@@ -26,16 +20,6 @@ const portfolioSchema = new mongoose.Schema({
 });
 const Portfolio = mongoose.models.Portfolio || mongoose.model('Portfolio', portfolioSchema);
 
-const assetSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    tickerSymbol: { type: String, required: true },
-    assetClass: { type: String, enum: ['Equity', 'Fixed Income', 'Real Estate', 'Commodities', 'Other'], default: 'Equity' },
-    totalShares: { type: Number, default: 0 },
-    currentPrice: { type: Number, default: 0 },
-    createdAt: { type: Date, default: Date.now }
-});
-const Asset = mongoose.models.Asset || mongoose.model('Asset', assetSchema);
-
 const watchlistSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     symbol: { type: String, required: true },
@@ -46,59 +30,93 @@ watchlistSchema.index({ userId: 1, symbol: 1 }, { unique: true });
 const Watchlist = mongoose.models.Watchlist || mongoose.model('Watchlist', watchlistSchema);
 
 const app = express();
-app.use(cors());
+
+// CORS - allow all origins for serverless
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json());
 
-// Cached connection for Serverless
-let cachedDb = null;
+// Cached connection for Serverless (avoids reconnecting on every request)
+let cachedConnection = null;
 
 async function connectToDatabase() {
-    if (cachedDb) return cachedDb;
-    const db = await mongoose.connect(process.env.MONGODB_URI);
-    cachedDb = db;
-    return db;
+    if (cachedConnection && mongoose.connection.readyState === 1) {
+        return cachedConnection;
+    }
+    if (!process.env.MONGODB_URI) {
+        throw new Error('MONGODB_URI environment variable is not set');
+    }
+    cachedConnection = await mongoose.connect(process.env.MONGODB_URI, {
+        serverSelectionTimeoutMS: 5000,
+    });
+    return cachedConnection;
 }
 
-// Routes
+// Health check
+app.get('/api', (req, res) => {
+    res.json({ status: 'Sovereign Wealth API is running on Vercel ✅' });
+});
+
+// Get all users
 app.get('/api/users', async (req, res) => {
-    await connectToDatabase();
     try {
-        const users = await User.find();
+        await connectToDatabase();
+        const users = await User.find().select('-password');
         res.json(users);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
 
+// Register
 app.post('/api/auth/register', async (req, res) => {
-    await connectToDatabase();
     try {
+        await connectToDatabase();
         const { email, password, name } = req.body;
+        if (!email || !password || !name) {
+            return res.status(400).json({ message: 'Name, email and password are required' });
+        }
         const existingUser = await User.findOne({ email });
         if (existingUser) return res.status(400).json({ message: 'User already exists' });
         const newUser = new User({ email, name, password });
         const savedUser = await newUser.save();
-        res.status(201).json({ user: savedUser, token: "demo-jwt-token-123" });
+        res.status(201).json({
+            user: { id: savedUser._id, name: savedUser.name, email: savedUser.email },
+            token: "demo-jwt-token-123"
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
 
+// Login
 app.post('/api/auth/login', async (req, res) => {
-    await connectToDatabase();
     try {
+        await connectToDatabase();
         const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(400).json({ message: 'Email and password are required' });
+        }
         const user = await User.findOne({ email });
         if (!user) return res.status(400).json({ message: 'User not found' });
-        res.status(200).json({ user, token: "demo-jwt-token-123", session: { user } });
+        // Simple password check (no bcrypt for now)
+        if (user.password && user.password !== password) {
+            return res.status(400).json({ message: 'Invalid password' });
+        }
+        const userObj = { id: user._id, name: user.name, email: user.email };
+        res.status(200).json({ user: userObj, token: "demo-jwt-token-123", session: { user: userObj } });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
 
+// Get watchlist
 app.get('/api/watchlist', async (req, res) => {
-    await connectToDatabase();
     try {
+        await connectToDatabase();
         const { userId } = req.query;
         if (!userId) return res.status(400).json({ message: 'UserId is required' });
         const items = await Watchlist.find({ userId });
@@ -108,9 +126,10 @@ app.get('/api/watchlist', async (req, res) => {
     }
 });
 
+// Add to watchlist
 app.post('/api/watchlist', async (req, res) => {
-    await connectToDatabase();
     try {
+        await connectToDatabase();
         const { userId, symbol, name } = req.body;
         const newItem = new Watchlist({ userId, symbol, name });
         await newItem.save();
@@ -120,9 +139,10 @@ app.post('/api/watchlist', async (req, res) => {
     }
 });
 
+// Remove from watchlist
 app.delete('/api/watchlist', async (req, res) => {
-    await connectToDatabase();
     try {
+        await connectToDatabase();
         const { userId, symbol } = req.query;
         await Watchlist.deleteOne({ userId, symbol });
         res.status(200).json({ message: 'Removed from watchlist' });
