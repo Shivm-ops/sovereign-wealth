@@ -1,38 +1,50 @@
-import React, { useEffect, useRef } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi, CandlestickSeries } from 'lightweight-charts';
+import React, { useEffect, useRef, useState } from 'react';
+import { createChart, ColorType, IChartApi, ISeriesApi, CandlestickSeries, Time } from 'lightweight-charts';
 
 export interface CandleData {
-  time: string;
+  time: Time;
   open: number;
   high: number;
   low: number;
   close: number;
 }
 
-const generateCandleData = (symbol: string): CandleData[] => {
+const intervals = [
+  { label: '1m', value: '1m', seconds: 60 },
+  { label: '5m', value: '5m', seconds: 300 },
+  { label: '1h', value: '1h', seconds: 3600 },
+  { label: '2h', value: '2h', seconds: 7200 },
+  { label: '1D', value: '1D', seconds: 86400 },
+];
+
+const generateCandleData = (symbol: string, interval: string): CandleData[] => {
   const data: CandleData[] = [];
-  // Use sum of char codes as seed for more consistent but "unique" mock data per symbol
   const seed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   let basePrice = (seed % 400) + 100;
 
-  const date = new Date(2023, 0, 1);
-  for (let i = 0; i < 100; i++) {
-    const volatility = basePrice * 0.025;
-    const open = basePrice + (Math.sin(i * 0.1 + seed) * volatility * 0.5);
-    const close = open + (Math.cos(i * 0.1 + seed) * volatility * 0.8);
-    const high = Math.max(open, close) + Math.random() * volatility * 0.4;
-    const low = Math.min(open, close) - Math.random() * volatility * 0.4;
+  const selectedInterval = intervals.find(i => i.value === interval) || intervals[4];
+  const intervalSeconds = selectedInterval.seconds;
 
-    const timeString = date.toISOString().split('T')[0];
+  const count = 200;
+  // Start from some time in the past
+  let currentTime = Math.floor(Date.now() / 1000) - (count * intervalSeconds);
+
+  for (let i = 0; i < count; i++) {
+    const volatility = basePrice * 0.005; // Lower volatility for intraday
+    const open = basePrice + (Math.sin(i * 0.15 + seed) * volatility);
+    const close = open + (Math.cos(i * 0.15 + seed) * volatility * 1.1);
+    const high = Math.max(open, close) + Math.random() * volatility * 0.5;
+    const low = Math.min(open, close) - Math.random() * volatility * 0.5;
+
     data.push({
-      time: timeString,
+      time: currentTime as Time,
       open: parseFloat(open.toFixed(2)),
       high: parseFloat(high.toFixed(2)),
       low: parseFloat(low.toFixed(2)),
       close: parseFloat(close.toFixed(2)),
     });
     basePrice = close;
-    date.setDate(date.getDate() + 1);
+    currentTime += intervalSeconds;
   }
   return data;
 };
@@ -48,6 +60,7 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ selectedStock = "AA
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const [interval, setInterval] = useState("1h");
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -108,7 +121,7 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ selectedStock = "AA
     });
     seriesRef.current = candlestickSeries;
 
-    const data = generateCandleData(selectedStock);
+    const data = generateCandleData(selectedStock, interval);
     candlestickSeries.setData(data);
 
     window.addEventListener('resize', handleResize);
@@ -121,43 +134,62 @@ const CandlestickChart: React.FC<CandlestickChartProps> = ({ selectedStock = "AA
 
   useEffect(() => {
     if (seriesRef.current) {
-      const data = generateCandleData(selectedStock);
+      const data = generateCandleData(selectedStock, interval);
       seriesRef.current.setData(data);
 
-      // Auto-scroll to most recent data
       if (chartRef.current) {
-        chartRef.current.timeScale().scrollToPosition(0, true);
+        chartRef.current.timeScale().fitContent();
       }
     }
-  }, [selectedStock]);
+  }, [selectedStock, interval]);
 
   return (
     <div className="glass rounded-xl p-6 overflow-hidden">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
         <div>
           <h3 className="font-semibold text-foreground text-lg">Market Performance ({selectedStock})</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Real-time Market Analytics</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Real-time Market Analytics • {interval}</p>
         </div>
-        <div className="flex gap-1 p-1 bg-muted/30 rounded-lg">
-          {stocks.map((s) => (
-            <button
-              key={s}
-              onClick={() => onSelectStock?.(s)}
-              className={`px-4 py-1.5 text-xs rounded-md font-medium transition-all duration-300 ${selectedStock === s
-                  ? "bg-primary text-primary-foreground shadow-lg"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                }`}
-            >
-              {s}
-            </button>
-          ))}
-          {!stocks.includes(selectedStock) && (
-            <button
-              className="px-4 py-1.5 text-xs rounded-md font-medium bg-primary text-primary-foreground shadow-lg"
-            >
-              {selectedStock}
-            </button>
-          )}
+
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Interval Selector */}
+          <div className="flex gap-1 p-1 bg-muted/20 rounded-lg border border-border/10">
+            {intervals.map((i) => (
+              <button
+                key={i.value}
+                onClick={() => setInterval(i.value)}
+                className={`px-2.5 py-1 text-[10px] rounded-md font-bold uppercase transition-all duration-300 ${interval === i.value
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                  }`}
+              >
+                {i.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Stock Selector */}
+          <div className="flex gap-1 p-1 bg-muted/30 rounded-lg">
+            {stocks.map((s) => (
+              <button
+                key={s}
+                onClick={() => onSelectStock?.(s)}
+                className={`px-4 py-1.5 text-xs rounded-md font-medium transition-all duration-300 ${selectedStock === s
+                    ? "bg-primary/80 text-primary-foreground shadow-lg"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  }`}
+              >
+                {s}
+              </button>
+            ))}
+            {!stocks.includes(selectedStock) && (
+              <button
+                className="px-4 py-1.5 text-xs rounded-md font-medium bg-primary/80 text-primary-foreground shadow-lg"
+              >
+                {selectedStock}
+              </button>
+            )}
+          </div>
         </div>
       </div>
       <div ref={chartContainerRef} className="w-full h-[380px] cursor-crosshair" />
