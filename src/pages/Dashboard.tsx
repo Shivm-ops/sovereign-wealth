@@ -19,6 +19,7 @@ const Dashboard = () => {
   const { toast } = useToast();
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [profileName, setProfileName] = useState("");
+  const [selectedStock, setSelectedStock] = useState("AAPL");
 
   useEffect(() => {
     if (!loading && !user) navigate("/login");
@@ -118,7 +119,7 @@ const Dashboard = () => {
         </div>
 
         {/* Candlestick Chart */}
-        <CandlestickChart />
+        <CandlestickChart selectedStock={selectedStock} onSelectStock={setSelectedStock} />
 
         {/* Portfolio + Watchlist */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -134,7 +135,7 @@ const Dashboard = () => {
           <h2 className="text-lg font-semibold mb-3 text-gradient-emerald">Top Gainers</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {topGainers.slice(0, 4).map(s => (
-              <StockCard key={s.symbol} stock={s} inWatchlist={watchlist.includes(s.symbol)} onToggleWatchlist={toggleWatchlist} />
+              <StockCard key={s.symbol} stock={s} inWatchlist={watchlist.includes(s.symbol)} onToggleWatchlist={toggleWatchlist} onClick={setSelectedStock} />
             ))}
           </div>
         </div>
@@ -144,7 +145,7 @@ const Dashboard = () => {
           <h2 className="text-lg font-semibold mb-3 text-destructive">Top Losers</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {topLosers.slice(0, 4).map(s => (
-              <StockCard key={s.symbol} stock={s} inWatchlist={watchlist.includes(s.symbol)} onToggleWatchlist={toggleWatchlist} />
+              <StockCard key={s.symbol} stock={s} inWatchlist={watchlist.includes(s.symbol)} onToggleWatchlist={toggleWatchlist} onClick={setSelectedStock} />
             ))}
           </div>
         </div>
@@ -154,7 +155,7 @@ const Dashboard = () => {
           <h2 className="text-lg font-semibold mb-3 text-gradient-gold">Trending Stocks</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {trendingStocks.map(s => (
-              <StockCard key={s.symbol} stock={s} inWatchlist={watchlist.includes(s.symbol)} onToggleWatchlist={toggleWatchlist} />
+              <StockCard key={s.symbol} stock={s} inWatchlist={watchlist.includes(s.symbol)} onToggleWatchlist={toggleWatchlist} onClick={setSelectedStock} />
             ))}
           </div>
         </div>
@@ -176,7 +177,7 @@ const Dashboard = () => {
               </thead>
               <tbody>
                 {allStocks.map(s => (
-                  <tr key={s.symbol} className="border-b border-border/10 hover:bg-muted/20 transition-colors">
+                  <tr key={s.symbol} onClick={() => setSelectedStock(s.symbol)} className="border-b border-border/10 hover:bg-muted/20 transition-colors cursor-pointer">
                     <td className="p-4 font-semibold text-foreground">{s.symbol}</td>
                     <td className="p-4 text-muted-foreground">{s.name}</td>
                     <td className="p-4 text-right font-medium text-foreground">${s.price.toFixed(2)}</td>

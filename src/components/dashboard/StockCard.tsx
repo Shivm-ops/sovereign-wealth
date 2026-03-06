@@ -6,13 +6,17 @@ interface StockCardProps {
   stock: Stock;
   inWatchlist?: boolean;
   onToggleWatchlist?: (symbol: string, name: string) => void;
+  onClick?: (symbol: string) => void;
 }
 
-const StockCard = ({ stock, inWatchlist, onToggleWatchlist }: StockCardProps) => {
+const StockCard = ({ stock, inWatchlist, onToggleWatchlist, onClick }: StockCardProps) => {
   const isUp = stock.change >= 0;
 
   return (
-    <div className="glass rounded-xl p-4 hover:border-primary/20 transition-all duration-300 group">
+    <div
+      className="glass rounded-xl p-4 hover:border-primary/20 transition-all duration-300 group cursor-pointer"
+      onClick={() => onClick?.(stock.symbol)}
+    >
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="flex items-center gap-2">
