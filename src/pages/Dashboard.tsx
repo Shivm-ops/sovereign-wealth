@@ -4,7 +4,6 @@ import { Activity, LogOut, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { signOut } from "@/lib/auth";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import MarketOverview from "@/components/dashboard/MarketOverview";
 import StockCard from "@/components/dashboard/StockCard";
@@ -27,24 +26,55 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (!user) return;
-    // Load profile
-    supabase.from("profiles").select("name").eq("user_id", user.id).single()
-      .then(({ data }) => { if (data) setProfileName(data.name); });
-    // Load watchlist
-    supabase.from("watchlist").select("stock_symbol").eq("user_id", user.id)
-      .then(({ data }) => { if (data) setWatchlist(data.map(w => w.stock_symbol)); });
+    setProfileName(user.name || user.email || "Investor");
+
+    // Load real watchlist from MongoDB
+    const userId = user._id || user.id;
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+    fetch(`${API_URL}/api/watchlist?userId=${userId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setWatchlist(data.map((item: any) => item.symbol));
+        }
+      })
+      .catch(err => console.error("Failed to fetch watchlist", err));
   }, [user]);
 
   const toggleWatchlist = async (symbol: string, name: string) => {
     if (!user) return;
+    const userId = user._id || user.id;
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
     if (watchlist.includes(symbol)) {
-      await supabase.from("watchlist").delete().eq("user_id", user.id).eq("stock_symbol", symbol);
-      setWatchlist(prev => prev.filter(s => s !== symbol));
-      toast({ title: `${symbol} removed from watchlist` });
+      // Remove from backend
+      try {
+        const res = await fetch(`${API_URL}/api/watchlist?userId=${userId}&symbol=${symbol}`, {
+          method: "DELETE"
+        });
+        if (res.ok) {
+          setWatchlist(prev => prev.filter(s => s !== symbol));
+          toast({ title: `${symbol} removed from watchlist` });
+        }
+      } catch (err) {
+        toast({ title: "Error", description: "Failed to remove from watchlist", variant: "destructive" });
+      }
     } else {
-      await supabase.from("watchlist").insert({ user_id: user.id, stock_symbol: symbol, stock_name: name });
-      setWatchlist(prev => [...prev, symbol]);
-      toast({ title: `${symbol} added to watchlist` });
+      // Add to backend
+      try {
+        const res = await fetch(`${API_URL}/api/watchlist`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, symbol, name })
+        });
+        if (res.ok) {
+          setWatchlist(prev => [...prev, symbol]);
+          toast({ title: `${symbol} added to watchlist` });
+        }
+      } catch (err) {
+        toast({ title: "Error", description: "Failed to add to watchlist", variant: "destructive" });
+      }
     }
   };
 
