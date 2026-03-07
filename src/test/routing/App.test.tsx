@@ -9,10 +9,7 @@ import * as reactRouterDom from 'react-router-dom';
 vi.mock('react-router-dom', async () => {
     const actual = await vi.importActual('react-router-dom');
     return {
-        ...actual as any,
-        // Provide a mocked mechanism on top or mock specific routing items if needed.
-        // However, App provides `<BrowserRouter>` internally, so testing `<App />` entirely mounts
-        // a real router, meaning we change location using `window.history`.
+        ...(actual as Record<string, unknown>),
     };
 });
 

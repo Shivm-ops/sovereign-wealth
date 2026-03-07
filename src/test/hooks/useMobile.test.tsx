@@ -71,9 +71,9 @@ describe('useIsMobile Hook behavior checks', () => {
     });
 
     it('triggers local state change effectively on resize event callback mock', () => {
-        let cb: Function | null = null;
+        let cb: ((evt: Event) => void) | null = null;
         const listenerProps = {
-            addEventListener: vi.fn((evt: string, fn: any) => { cb = fn; }) as any,
+            addEventListener: vi.fn((evt: string, fn: (evt: Event) => void) => { cb = fn; }) as unknown as (evt: string, fn: (evt: Event) => void) => void,
             removeEventListener: vi.fn(),
             matches: false,
             media: '',
@@ -91,7 +91,7 @@ describe('useIsMobile Hook behavior checks', () => {
 
         act(() => {
             window.innerWidth = 300;
-            if (cb) cb();
+            if (cb) cb(new Event('resize'));
         });
 
         expect(result.current).toBe(true);

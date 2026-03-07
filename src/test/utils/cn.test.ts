@@ -19,7 +19,9 @@ describe("cn utility function tests", () => {
     });
 
     it("handles boolean short chaining", () => {
-        expect(cn(true && "class-a", false && "class-b", "class-c")).toBe("class-a class-c");
+        const truthy = true as boolean;
+        const falsy = false as boolean;
+        expect(cn(truthy && "class-a", falsy && "class-b", "class-c")).toBe("class-a class-c");
     });
 
     it("merges arrays of classes", () => {

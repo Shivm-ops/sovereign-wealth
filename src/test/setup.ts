@@ -63,5 +63,5 @@ if (!window.PointerEvent) {
       this.isPrimary = params.isPrimary ?? false;
     }
   }
-  window.PointerEvent = PointerEventMock as any;
+  window.PointerEvent = PointerEventMock as unknown as typeof window.PointerEvent;
 }
