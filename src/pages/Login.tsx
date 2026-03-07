@@ -24,8 +24,9 @@ const Login = () => {
     try {
       await signIn(email, password);
       navigate("/dashboard");
-    } catch (err: any) {
-      toast({ title: "Login failed", description: err.message || "Invalid credentials.", variant: "destructive" });
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Invalid credentials.";
+      toast({ title: "Login failed", description: errorMsg, variant: "destructive" });
     } finally {
       setLoading(false);
     }

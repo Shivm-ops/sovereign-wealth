@@ -37,10 +37,10 @@ const Dashboard = () => {
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
-          setWatchlist(data.map((item: any) => item.symbol));
+          setWatchlist(data.map((item: { symbol: string }) => item.symbol));
         }
       })
-      .catch(err => console.error("Failed to fetch watchlist", err));
+      .catch((err: unknown) => console.error("Failed to fetch watchlist", err));
   }, [user]);
 
   const toggleWatchlist = async (symbol: string, name: string) => {
