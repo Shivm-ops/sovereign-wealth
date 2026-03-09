@@ -1,6 +1,6 @@
 // Fix "process is not defined" error in the browser
 if (typeof window !== "undefined") {
-    window.process = { env: {} } as any;
+    (window as unknown as { process: { env: Record<string, unknown> } }).process = { env: {} };
 }
 
 import { createRoot } from "react-dom/client";

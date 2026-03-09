@@ -35,8 +35,9 @@ const Signup = () => {
       await signUp(name, email, password);
       toast({ title: "Account created!", description: "You can now sign in." });
       navigate("/login");
-    } catch (err: any) {
-      toast({ title: "Signup failed", description: err.message || "Something went wrong.", variant: "destructive" });
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Something went wrong.";
+      toast({ title: "Signup failed", description: errorMsg, variant: "destructive" });
     } finally {
       setLoading(false);
     }
