@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # The MongoDB Database Container
+  mongodb:
+    image: mongo:latest
+    container_name: trading_db
+    ports:
+      - "27017:27017" # Map host 27017 to container 27017
+    volumes:
+      - mongo_data:/data/db # Prevents data loss if container stops
+    restart: always
+
+  # The Node.js Backend API Container
+  backend:
+    build: ./backend # Looks for the Dockerfile inside the backend folder
+    container_name: trading_backend
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongodb:27017/sovereign-wealth # Note how we use the container name "mongodb" directly
+    depends_on:
+      - mongodb
+    restart: always
+
+  # The React.js Frontend UI Container
+  frontend:
+    build: . # Looks for the Dockerfile in the current root folder
+    container_name: trading_frontend
+    ports:
+      - "3000:80" # Map host browser port 3000 to Nginx default port 80
+    depends_on:
+      - backend
+    restart: always
+
+# Define persistent storage for the database
+volumes:
+  mongo_data:
