@@ -1,6 +1,8 @@
 # Step 1: Build the React application
 FROM node:20-alpine AS builder
 WORKDIR /app
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
 # Copy package dependencies first for better caching
 COPY package*.json ./
 RUN npm install
