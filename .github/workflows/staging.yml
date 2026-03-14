@@ -1,0 +1,92 @@
+name: Deploy to AWS EC2 Staging (Cost-Optimized)
+
+on:
+  push:
+    branches:
+      - staging
+
+env:
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  FRONTEND_IMAGE: ${{ secrets.DOCKER_USERNAME }}/saas-frontend-staging
+  BACKEND_IMAGE: ${{ secrets.DOCKER_USERNAME }}/saas-backend-staging
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 1. CI Testing Phase
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install & Test
+        run: |
+          npm ci
+          npm run lint
+          npx tsc --noEmit
+          npx vitest run
+
+      # 2. Authenticate with Docker Hub (Free)
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_PASSWORD }}
+
+      # 3. Build & Push Docker Images
+      - name: Build and Push Backend Image
+        run: |
+          cd backend
+          docker build -t ${{ env.BACKEND_IMAGE }}:${{ github.sha }} -t ${{ env.BACKEND_IMAGE }}:latest .
+          docker push ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+          docker push ${{ env.BACKEND_IMAGE }}:latest
+
+      - name: Build and Push Frontend Image
+        run: |
+          docker build -t ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} -t ${{ env.FRONTEND_IMAGE }}:latest .
+          docker push ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+          docker push ${{ env.FRONTEND_IMAGE }}:latest
+
+      # 4. Deploy to AWS EC2 (Connecting via SSH)
+      - name: Deploy to EC2 Staging
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AWS_EC2_HOST_STAGING }}
+          username: ${{ secrets.AWS_EC2_USERNAME }} # e.g. ubuntu or ec2-user
+          key: ${{ secrets.AWS_EC2_PRIVATE_KEY }}
+          script: |
+            # Create a directory if it doesn't exist
+            mkdir -p ~/saas-staging
+            cd ~/saas-staging
+            
+            # Create a docker-compose.yml file dynamically with the new images
+            cat <<EOF > docker-compose.yml
+            version: '3.8'
+            services:
+              backend:
+                image: ${{ env.BACKEND_IMAGE }}:latest
+                ports:
+                  - "5000:5000"
+                environment:
+                  - PORT=5000
+                  - MONGODB_URI=\${MONGODB_URI}
+                restart: always
+              frontend:
+                image: ${{ env.FRONTEND_IMAGE }}:latest
+                ports:
+                  - "80:80"
+                depends_on:
+                  - backend
+                restart: always
+            EOF
+            
+            # Pull the latest images and restart the containers safely
+            docker compose pull
+            docker compose up -d
