@@ -50,17 +50,20 @@ jobs:
 
       - name: Build and Push Frontend Image
         run: |
-          docker build -t ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} -t ${{ env.FRONTEND_IMAGE }}:latest .
+          docker build --build-arg VITE_API_URL=http://${{ secrets.AWS_EC2_HOST_STAGING }}:5000 -t ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} -t ${{ env.FRONTEND_IMAGE }}:latest .
           docker push ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
           docker push ${{ env.FRONTEND_IMAGE }}:latest
 
       # 4. Deploy to AWS EC2 (Connecting via SSH)
       - name: Deploy to EC2 Staging
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI_STAGING || secrets.MONGODB_URI }}
         with:
           host: ${{ secrets.AWS_EC2_HOST_STAGING }}
           username: ${{ secrets.AWS_EC2_USERNAME }} # e.g. ubuntu or ec2-user
           key: ${{ secrets.AWS_EC2_PRIVATE_KEY }}
+          envs: MONGODB_URI
           script: |
             # Create a directory if it doesn't exist
             mkdir -p ~/saas-staging
@@ -82,6 +85,8 @@ jobs:
                 image: ${{ env.FRONTEND_IMAGE }}:latest
                 ports:
                   - "80:80"
+                environment:
+                  - VITE_API_URL=http://${{ secrets.AWS_EC2_HOST_STAGING }}:5000
                 depends_on:
                   - backend
                 restart: always

@@ -58,10 +58,13 @@ jobs:
       # 4. Deploy to AWS EC2 (Connecting via SSH)
       - name: Deploy to EC2 Production
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
         with:
           host: ${{ secrets.AWS_EC2_HOST_PROD }}
           username: ${{ secrets.AWS_EC2_USERNAME }} # e.g. ubuntu or ec2-user
           key: ${{ secrets.AWS_EC2_PRIVATE_KEY }}
+          envs: MONGODB_URI
           script: |
             # Create a directory if it doesn't exist
             mkdir -p ~/saas-production
